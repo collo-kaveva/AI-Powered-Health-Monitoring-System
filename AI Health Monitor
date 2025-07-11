@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Health Monitor</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .alert-pulse {
+            animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        .health-card {
+            transition: all 0.3s ease;
+        }
+        .health-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <header class="bg-white shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8 flex justify-between items-center">
+            <div class="flex items-center">
+                <img src="https://placehold.co/60x60" alt="AI Health Monitor logo with a heartbeat graphic and futuristic design" class="h-10 w-10 rounded-full">
+                <h1 class="ml-3 text-2xl font-bold text-gray-900">AI Health Monitor</h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <span id="current-time" class="text-gray-600"></span>
+                <button id="refresh-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
+                    </svg>
+                    Refresh
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Alert Section -->
+        <div id="alert-section" class="hidden mb-8">
+            <div class="bg-red-50 border-l-4 border-red-400 p-4 rounded-md alert-pulse">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-red-800" id="alert-title">Health Advisory</h3>
+                        <div class="mt-2 text-sm text-red-700" id="alert-message">
+                            <p>Abnormal health patterns detected. Please consult with your healthcare provider.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- Heart Rate Card -->
+            <div class="health-card bg-white shadow rounded-lg overflow-hidden">
+                <div class="p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 bg-red-100 p-3 rounded-full">
+                            <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 truncate">Heart Rate</dt>
+                                <dd class="flex items-baseline">
+                                    <div class="text-2xl font-semibold text-gray-900" id="heart-rate">--</div>
+                                    <div class="ml-2 flex items-baseline text-sm font-semibold">
+                                        <span class="text-green-600" id="heart-rate-trend">-- bpm</span>
+                                    </div>
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                    <div class="mt-5">
+                        <canvas id="heartRateChart" height="100"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Blood Oxygen Card -->
+            <div class="health-card bg-white shadow rounded-lg overflow-hidden">
+                <div class="p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 bg-blue-100 p-3 rounded-full">
+                            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 truncate">Blood Oxygen</dt>
+                                <dd class="flex items-baseline">
+                                    <div class="text-2xl font-semibold text-gray-900" id="blood-oxygen">--</div>
+                                    <div class="ml-2 flex items-baseline text-sm font-semibold">
+                                        <span class="text-green-600" id="blood-oxygen-trend">--%</span>
+                                    </div>
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                    <div class="mt-5">
+                        <canvas id="bloodOxygenChart" height="100"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Activity Level Card -->
+            <div class="health-card bg-white shadow rounded-lg overflow-hidden">
+                <div class="p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 bg-yellow-100 p-3 rounded-full">
+                            <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 truncate">Activity Level</dt>
+                                <dd class="flex items-baseline">
+                                    <div class="text-2xl font-semibold text-gray-900" id="activity-level">--</div>
+                                    <div class="ml-2 flex items-baseline text-sm font-semibold">
+                                        <span class="text-green-600" id="activity-level-trend">--</span>
+                                    </div>
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                    <div class="mt-5">
+                        <canvas id="activityChart" height="100"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sleep Quality Card -->
+            <div class="health-card bg-white shadow rounded-lg overflow-hidden">
+                <div class="p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 bg-purple-100 p-3 rounded-full">
+                            <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 truncate">Sleep Quality</dt>
+                                <dd class="flex items-baseline">
+                                    <div class="text-2xl font-semibold text-gray-900" id="sleep-quality">--</div>
+                                    <div class="ml-2 flex items-baseline text-sm font-semibold">
+                                        <span class="text-green-600" id="sleep-quality-trend">--</span>
+                                    </div>
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                    <div class="mt-5">
+                        <canvas id="sleepChart" height="100"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Health Insights Section -->
+        <div class="bg-white shadow rounded-lg overflow-hidden mb-8">
+            <div class="p-6">
+                <h2 class="text-lg font-medium text-gray-900 mb-4">AI Health Insights</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <h3 class="text-md font-medium text-gray-700 mb-2">Anomaly Detection</h3>
+                        <div class="bg-gray-50 p-4 rounded-md">
+                            <ul class="space-y-3" id="anomaly-list">
+                                <li class="flex items-start">
+                                    <div class="flex-shrink-0">
+                                        <svg class="h-5 w-5 text-green-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                        </svg>
+                                    </div>
+                                    <span class="ml-3 text-sm">No anomalies detected in heart rate</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="text-md font-medium text-gray-700 mb-2">Personalized Recommendations</h3>
+                        <div class="bg-blue-50 p-4 rounded-md">
+                            <ul class="space-y-3" id="recommendations-list">
+                                <li class="flex items-start">
+                                    <div class="flex-shrink-0">
+                                        <svg class="h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9z" clip-rule="evenodd" />
+                                        </svg>
+                                    </div>
+                                    <span class="ml-3 text-sm">Maintain regular exercise for optimal health</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Charts -->
+        <div class="bg-white shadow rounded-lg overflow-hidden">
+            <div class="p-6">
+                <h2 class="text-lg font-medium text-gray-900 mb-4">Detailed Health Metrics</h2>
+                <div class="grid grid-cols-1 gap-6">
+                    <div>
+                        <h3 class="text-md font-medium text-gray-700 mb-2">24-Hour Heart Rate Monitor</h3>
+                        <canvas id="detailedHeartChart" height="150"></canvas>
+                    </div>
+                    <div>
+                        <h3 class="text-md font-medium text-gray-700 mb-2">Weekly Activity Summary</h3>
+                        <canvas id="weeklyActivityChart" height="150"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-white border-t mt-12">
+        <div class="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+            <p class="text-center text-sm text-gray-500">&copy; 2023 AI Health Monitor. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Initialize variables
+        let heartRateData = [];
+        let bloodOxygenData = [];
+        let activityData = [];
+        let sleepData = [];
+        let anomalyDetected = false;
+
+        // DOM elements
+        const refreshBtn = document.getElementById('refresh-btn');
+        const alertSection = document.getElementById('alert-section');
+        const currentTimeEl = document.getElementById('current-time');
+
+        // Initialize all charts
+        let heartRateChart, bloodOxygenChart, activityChart, sleepChart;
+        let detailedHeartChart, weeklyActivityChart;
+
+        // Chart options
+        const smallChartOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    display: false
+                },
+                x: {
+                    display: false
+                }
+            },
+            elements: {
+                point: {
+                    radius: 0
+                },
+                line: {
+                    tension: 0.4
+                }
+            }
+        };
+
+        // Generate random health data
+        function generateHealthData() {
+            // Clear existing data
+            heartRateData = [];
+            bloodOxygenData = [];
+            activityData = [];
+            sleepData = [];
+            anomalyDetected = false;
+
+            // Generate normal baseline data
+            const now = new Date();
+            
+            // Generate heart rate data (60-100 bpm normally)
+            for (let i = 0; i < 24; i++) {
+                const hour = new Date(now);
+                hour.setHours(now.getHours() - (23 - i));
+                
+                // Simulate circadian rhythm - lower at night, higher during day
+                let baseRate;
+                if (hour.getHours() >= 22 || hour.getHours() <= 6) {
+                    baseRate = 58 + Math.random() * 10; // Night range: 58-68
+                } else if (hour.getHours() >= 13 && hour.getHours() <= 17) {
+                    baseRate = 75 + Math.random() * 15; // Afternoon range: 75-90
+                } else {
+                    baseRate = 65 + Math.random() * 15; // Day range: 65-80
+                }
+                
+                // Add some randomness
+                baseRate += (Math.random() * 4 - 2);
+                baseRate = Math.round(baseRate);
+                
+                // Occasionally add an anomaly (10% chance)
+                let isAnomaly = Math.random() < 0.1;
+                if (isAnomaly) {
+                    anomalyDetected = true;
+                    baseRate += (Math.random() < 0.5 ? 30 : -25);
+                }
+                
+                heartRateData.push({
+                    time: hour,
+                    value: baseRate,
+                    anomaly: isAnomaly
+                });
+            }
+            
+            // Generate blood oxygen data (normally 95-100%)
+            for (let i = 0; i < 24; i++) {
+                bloodOxygenData.push({
+                    time: new Date(now.getTime() - (23 - i) * 3600000),
+                    value: 95 + Math.round(Math.random() * 5)
+                });
+            }
+            
+            // Generate activity data (low, moderate, high)
+            const activityLevels = ['low', 'moderate', 'high'];
+            for (let i = 0; i < 7; i++) {
+                const day = new Date(now);
+                day.setDate(now.getDate() - (6 - i));
+                
+                // Weekdays tend to be more active than weekends
+                let activity;
+                if (day.getDay() === 0 || day.getDay() === 6) {
+                    activity = Math.random() < 0.3 ? 'high' : (Math.random() < 0.6 ? 'moderate' : 'low');
+                } else {
+                    activity = Math.random() < 0.5 ? 'high' : (Math.random() < 0.7 ? 'moderate' : 'low');
+                }
+                
+                activityData.push({
+                    day: day,
+                    level: activity
+                });
+            }
+            
+            // Generate sleep quality data (1-5 stars)
+            for (let i = 0; i < 7; i++) {
+                const day = new Date(now);
+                day.setDate(now.getDate() - (6 - i));
+                
+                // Sleep quality is usually worse on weekdays before work/school
+                let quality;
+                if (day.getDay() === 0 || day.getDay() === 6) {
+                    quality = 3 + Math.floor(Math.random() * 3); // Weekend: 3-5 stars
+                } else {
+                    quality = 2 + Math.floor(Math.random() * 3); // Weekday: 2-4 stars
+                }
+                
+                sleepData.push({
+                    day: day,
+                    quality: quality
+                });
+            }
+        }
+
+        // Initialize charts
+        function initCharts() {
+            // Heart Rate Mini Chart
+            const heartRateCtx = document.getElementById('heartRateChart').getContext('2d');
+            heartRateChart = new Chart(heartRateCtx, {
+                type: 'line',
+                data: {
+                    labels: heartRateData.map(data => data.time.getHours() + ':00'),
+                    datasets: [{
+                        data: heartRateData.map(data => data.value),
+                        borderColor: '#EF4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        borderWidth: 2,
+                        fill: true
+                    }]
+                },
+                options: smallChartOptions
+            });
+
+            // Blood Oxygen Mini Chart
+            const bloodOxygenCtx = document.getElementById('bloodOxygenChart').getContext('2d');
+            bloodOxygenChart = new Chart(bloodOxygenCtx, {
+                type: 'line',
+                data: {
+                    labels: bloodOxygenData.map(data => data.time.getHours() + ':00'),
+                    datasets: [{
+                        data: bloodOxygenData.map(data => data.value),
+                        borderColor: '#3B82F6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 2,
+                        fill: true
+                    }]
+                },
+                options: smallChartOptions
+            });
+
+            // Activity Mini Chart
+            const activityCtx = document.getElementById('activityChart').getContext('2d');
+            activityChart = new Chart(activityCtx, {
+                type: 'line',
+                data: {
+                    labels: activityData.map(data => 
+                        ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][data.day.getDay()]
+                    ),
+                    datasets: [{
+                        data: activityData.map(data => 
+                            data.level === 'low' ? 1 : (data.level === 'moderate' ? 2 : 3)
+                        ),
+                        borderColor: '#F59E0B',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        borderWidth: 2,
+                        fill: false
+                    }]
+                },
+                options: smallChartOptions
+            });
+
+            // Sleep Quality Mini Chart
+            const sleepCtx = document.getElementById('sleepChart').getContext('2d');
+            sleepChart = new Chart(sleepCtx, {
+                type: 'line',
+                data: {
+                    labels: sleepData.map(data => 
+                        ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][data.day.getDay()]
+                    ),
+                    datasets: [{
+                        data: sleepData.map(data => data.quality),
+                        borderColor: '#8B5CF6',
+                        backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                        borderWidth: 2,
+                        fill: true
+                    }]
+                },
+                options: smallChartOptions
+            });
+
+            // Detailed Heart Rate Chart
+            const detailedHeartCtx = document.getElementById('detailedHeartChart').getContext('2d');
+            detailedHeartChart = new Chart(detailedHeartCtx, {
+                type: 'line',
+                data: {
+                    labels: heartRateData.map(data => {
+                        const h = data.time.getHours();
+                        return h === 0 ? '12AM' : 
+                               h < 12 ? h + 'AM' : 
+                               h === 12 ? '12PM' : 
+                               (h - 12) + 'PM';
+                    }),
+                    datasets: [{
+                        label: 'Heart Rate (bpm)',
+                        data: heartRateData.map(data => data.value),
+                        borderColor: '#EF4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.05)',
+                        borderWidth: 2,
+                        pointBackgroundColor: heartRateData.map(data => 
+                            data.anomaly ? '#FF0000' : '#EF4444'
+                        ),
+                        pointRadius: 3,
+                        pointHoverRadius: 5,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${context.raw} bpm`;
+                                },
+                                afterLabel: function(context) {
+                                    const data = heartRateData[context.dataIndex];
+                                    return data.anomaly ? '⚠️ Anomaly detected' : '';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: 'Beats per minute (bpm)'
+                            },
+                            min: Math.max(40, Math.min(...heartRateData.map(d => d.value)) - 10),
+                            max: Math.min(120, Math.max(...heartRateData.map(d => d.value)) + 10)
+                        }
+                    }
+                }
+            });
+
+            // Weekly Activity Chart
+            const weeklyActivityCtx = document.getElementById('weeklyActivityChart').getContext('2d');
+            weeklyActivityChart = new Chart(weeklyActivityCtx, {
+                type: 'bar',
+                data: {
+                    labels: activityData.map(data => 
+                        ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][data.day.getDay()]
+                    ),
+                    datasets: [{
+                        label: 'Activity Level',
+                        data: activityData.map(data => 
+                            data.level === 'low' ? 1 : (data.level === 'moderate' ? 2 : 3)
+                        ),
+                        backgroundColor: activityData.map(data => 
+                            data.level === 'low' ? 'rgba(75, 192, 192, 0.6)' : 
+                            (data.level === 'moderate' ? 'rgba(54, 162, 235, 0.6)' : 'rgba(255, 99, 132, 0.6)')
+                        ),
+                        borderColor: activityData.map(data => 
+                            data.level === 'low' ? 'rgba(75, 192, 192, 1)' : 
+                            (data.level === 'moderate' ? 'rgba(54, 162, 235, 1)' : 'rgba(255, 99, 132, 1)')
+                        ),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            ticks: {
+                                callback: function(value) {
+                                    return value === 1 ? 'Low' : (value === 2 ? 'Moderate' : 'High');
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return ['Low', 'Moderate', 'High'][context.raw - 1];
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update UI with current data
+        function updateUI() {
+            // Update current time
+            const now = new Date();
+            currentTimeEl.textContent = now.toLocaleString('en-US', {
+                weekday: 'long',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+
+            // Calculate averages and trends
+            const currentHeartRate = heartRateData[heartRateData.length - 1].value;
+            const heartRateAvg = Math.round(heartRateData.reduce((sum, data) => sum + data.value, 0) / heartRateData.length);
+            const heartRateTrend = currentHeartRate > heartRateAvg ? 'rising' : currentHeartRate < heartRateAvg ? 'falling' : 'steady';
+
+            const currentBloodOxygen = bloodOxygenData[bloodOxygenData.length - 1].value;
+            const bloodOxygenAvg = Math.round(bloodOxygenData.reduce((sum, data) => sum + data.value, 0) / bloodOxygenData.length);
+            const bloodOxygenTrend = currentBloodOxygen > bloodOxygenAvg ? 'rising' : currentBloodOxygen < bloodOxygenAvg ? 'falling' : 'steady';
+
+            const currentActivity = activityData[activityData.length - 1].level;
+            const currentSleepQuality = sleepData[sleepData.length - 1].quality;
+            const sleepQualityAvg = Math.round(sleepData.reduce((sum, data) => sum + data.quality, 0) / sleepData.length);
+            const sleepQualityTrend = currentSleepQuality > sleepQualityAvg ? 'rising' : currentSleepQuality < sleepQualityAvg ? 'falling' : 'steady';
+
+            // Update summary cards
+            document.getElementById('heart-rate').textContent = currentHeartRate;
+            document.getElementById('heart-rate-trend').textContent = `${heartRateTrend} (avg ${heartRateAvg} bpm)`;
+            document.getElementById('blood-oxygen').textContent = currentBloodOxygen;
+            document.getElementById('blood-oxygen-trend').textContent = `${bloodOxygenTrend} (avg ${bloodOxygenAvg}%)`;
+            document.getElementById('activity-level').textContent = currentActivity.charAt(0).toUpperCase() + currentActivity.slice(1);
+            document.getElementById('sleep-quality').textContent = '⭐'.repeat(currentSleepQuality);
+
+            // Update alerts based on anomalies
+            if (anomalyDetected) {
+                alertSection.classList.remove('hidden');
+                
+                // Find the anomaly timestamp and value
+                const anomalyData = heartRateData.find(data => data.anomaly);
+                const anomalyTime = anomalyData.time.toLocaleTimeString();
+                const anomalyValue = anomalyData.value;
+                
+                document.getElementById('alert-title').textContent = 'Potential Health Concern Detected';
+                document.getElementById('alert-message').innerHTML = `
+                    <p>Your heart rate showed abnormal readings at ${anomalyTime} (${anomalyValue} bpm).</p>
+                    <p class="mt-2">Please consider:</p>
+                    <ul class="list-disc pl-5 mt-1">
+                        <li>Resting for 15-30 minutes</li>
+                        <li>Hydrating with water</li>
+                        <li>Consulting your doctor if this persists</li>
+                    </ul>
+                `;
+            } else {
+                alertSection.classList.add('hidden');
+            }
+
+            // Update anomaly list
+            const anomalyListEl = document.getElementById('anomaly-list');
+            anomalyListEl.innerHTML = '';
+            
+            if (anomalyDetected) {
+                const anomalyData = heartRateData.filter(data => data.anomaly);
+                anomalyData.forEach(data => {
+                    const anomalyTime = data.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    
+                    const item = document.createElement('li');
+                    item.className = 'flex items-start';
+                    item.innerHTML = `
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <span class="ml-3 text-sm">
+                            Potential anomaly detected at ${anomalyTime}: Heart rate at ${data.value} bpm
+                        </span>
+                    `;
+                    anomalyListEl.appendChild(item);
+                });
+            } else {
+                const item = document.createElement('li');
+                item.className = 'flex items-start';
+                item.innerHTML = `
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-green-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <span class="ml-3 text-sm">No abnormalities detected in heart rate</span>
+                `;
+                anomalyListEl.appendChild(item);
+                
+                // Check blood oxygen
+                if (currentBloodOxygen < 94) {
+                    const item = document.createElement('li');
+                    item.className = 'flex items-start';
+                    item.innerHTML = `
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-yellow-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <span class="ml-3 text-sm">Low blood oxygen detected: ${currentBloodOxygen}% (normal range: 95-100%)</span>
+                    `;
+                    anomalyListEl.appendChild(item);
+                }
+            }
+
+            // Update recommendations
+            const recommendationsListEl = document.getElementById('recommendations-list');
+            recommendationsListEl.innerHTML = '';
+            
+            // General recommendations based on data
+            if (currentHeartRate > 85) {
+                const item = document.createElement('li');
+                item.className = 'flex items-start';
+                item.innerHTML = `
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <span class="ml-3 text-sm">
+                        Your heart rate is slightly elevated (${currentHeartRate} bpm). 
+                        Consider relaxation techniques like deep breathing.
+                    </span>
+                `;
+                recommendationsListEl.appendChild(item);
+            }
+            
+            if (currentBloodOxygen < 95) {
+                const item = document.createElement('li');
+                item.className = 'flex items-start';
+                item.innerHTML = `
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <span class="ml-3 text-sm">
+                        Your blood oxygen (${currentBloodOxygen}%) is below optimal. 
+                        Ensure proper hydration and consider outdoor activity.
+                    </span>
+                `;
+                recommendationsListEl.appendChild(item);
+            }
+            
+            if (currentActivity === 'low') {
+                const item = document.createElement('li');
+                item.className = 'flex items-start';
+                item.innerHTML = `
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <span class="ml-3 text-sm">
+                        You've had low activity recently. Try to incorporate at least 30 minutes of moderate exercise.
+                    </span>
+                `;
+                recommendationsListEl.appendChild(item);
+            }
+            
+            if (currentSleepQuality < 3) {
+                const item = document.createElement('li');
+                item.className = 'flex items-start';
+                item.innerHTML = `
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <span class="ml-3 text-sm">
+                        Sleep quality has been low. Consider establishing a regular bedtime routine.
+                    </span>
+                `;
+                recommendationsListEl.appendChild(item);
+            }
+            
+            // Always show some general recommendations
+            const generalRecommendations = [
+                "Stay hydrated by drinking at least 8 glasses of water daily",
+                "Take short breaks every hour if you're sitting for long periods",
+                "Practice mindfulness or meditation for 10 minutes daily"
+            ];
+            
+            generalRecommendations.forEach(text => {
+                const item = document.createElement('li');
+                item.className = 'flex items-start';
+                item.innerHTML = `
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <span class="ml-3 text-sm">${text}</span>
+                `;
+                recommendationsListEl.appendChild(item);
+            });
+
+            // Update charts with new data
+            heartRateChart.data.datasets[0].data = heartRateData.map(data => data.value);
+            heartRateChart.update();
+            
+            bloodOxygenChart.data.datasets[0].data = bloodOxygenData.map(data => data.value);
+            bloodOxygenChart.update();
+            
+            activityChart.data.datasets[0].data = activityData.map(data => 
+                data.level === 'low' ? 1 : (data.level === 'moderate' ? 2 : 3)
+            );
+            activityChart.update();
+            
+            sleepChart.data.datasets[0].data = sleepData.map(data => data.quality);
+            sleepChart.update();
+            
+            detailedHeartChart.data.datasets[0].data = heartRateData.map(data => data.value);
+            detailedHeartChart.data.datasets[0].pointBackgroundColor = heartRateData.map(data => 
+                data.anomaly ? '#FF0000' : '#EF4444'
+            );
+            detailedHeartChart.update();
+            
+            weeklyActivityChart.data.datasets[0].data = activityData.map(data => 
+                data.level === 'low' ? 1 : (data.level === 'moderate' ? 2 : 3)
+            );
+            weeklyActivityChart.data.datasets[0].backgroundColor = activityData.map(data => 
+                data.level === 'low' ? 'rgba(75, 192, 192, 0.6)' : 
+                (data.level === 'moderate' ? 'rgba(54, 162, 235, 0.6)' : 'rgba(255, 99, 132, 0.6)')
+            );
+            weeklyActivityChart.data.datasets[0].borderColor = activityData.map(data => 
+                data.level === 'low' ? 'rgba(75, 192, 192, 1)' : 
+                (data.level === 'moderate' ? 'rgba(54, 162, 235, 1)' : 'rgba(255, 99, 132, 1)')
+            );
+            weeklyActivityChart.update();
+        }
+
+        // Initialize the app
+        function initApp() {
+            generateHealthData();
+            initCharts();
+            updateUI();
+        }
+
+        // Event listeners
+        refreshBtn.addEventListener('click', () => {
+            generateHealthData();
+            updateUI();
+        });
+
+        // Start the app
+        initApp();
+    </script>
+</body>
+</html>
